@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dropout Prediction - Simplified</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🎓 Student Dropout Prediction</h1>
+            <p>Predição de abandono escolar</p>
+            <div class="stats">
+                <span class="stat-badge">✨ Simplificado</span>
+                <span class="stat-badge">🚀 Rápido</span>
+                <span class="stat-badge">📊 Preciso</span>
+            </div>
+        </header>
+
+        <form id="predictionForm" class="form">
+            <!-- Personal Information -->
+            <div class="card">
+                <h2>👤 Informações Pessoais</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="age_at_enrollment">Idade na Matrícula</label>
+                        <input type="number" id="age_at_enrollment" name="age_at_enrollment" 
+                               min="16" max="80" required>
+                        <span class="field-help">Entre 16 e 80 anos</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="gender">Gênero</label>
+                        <select id="gender" name="gender" required>
+                            <option value="">Selecione</option>
+                            <option value="0">👩 Feminino</option>
+                            <option value="1">👨 Masculino</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="marital_status">Estado Civil</label>
+                        <select id="marital_status" name="marital_status" required>
+                            <option value="">Selecione</option>
+                            <option value="1">💍 Solteiro(a)</option>
+                            <option value="2">👫 Casado(a)</option>
+                            <option value="3">💔 Divorciado(a)</option>
+                            <option value="4">🖤 Viúvo(a)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Academic Information -->
+            <div class="card">
+                <h2>🎯 Informações Acadêmicas</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="admission_grade">Nota de Admissão</label>
+                        <input type="number" id="admission_grade" name="admission_grade" 
+                               min="0" max="200" step="0.1" required>
+                        <span class="field-help">Escala de 0 a 200</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="daytime_evening_attendance">Período do Curso</label>
+                        <select id="daytime_evening_attendance" name="daytime_evening_attendance" required>
+                            <option value="">Selecione</option>
+                            <option value="1">☀️ Diurno</option>
+                            <option value="0">🌙 Noturno</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Financial Status -->
+            <div class="card">
+                <h2>💰 Situação Financeira</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="scholarship_holder">Possui Bolsa de Estudos?</label>
+                        <select id="scholarship_holder" name="scholarship_holder" required>
+                            <option value="">Selecione</option>
+                            <option value="1">✅ Sim</option>
+                            <option value="0">❌ Não</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="tuition_fees_up_to_date">Mensalidades em Dia?</label>
+                        <select id="tuition_fees_up_to_date" name="tuition_fees_up_to_date" required>
+                            <option value="">Selecione</option>
+                            <option value="1">✅ Sim</option>
+                            <option value="0">❌ Não</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 1st Semester Performance -->
+            <div class="card">
+                <h2>📈 Desempenho 1º Semestre</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="curricular_units_1st_sem_enrolled">Matérias Matriculadas</label>
+                        <input type="number" id="curricular_units_1st_sem_enrolled" 
+                               name="curricular_units_1st_sem_enrolled" min="0" max="15" required>
+                        <span class="field-help">Número total de matérias</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="curricular_units_1st_sem_approved">Matérias Aprovadas</label>
+                        <input type="number" id="curricular_units_1st_sem_approved" 
+                               name="curricular_units_1st_sem_approved" min="0" max="15" required>
+                        <span class="field-help">Quantas foram aprovadas</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="curricular_units_1st_sem_grade">Nota Média</label>
+                        <input type="number" id="curricular_units_1st_sem_grade" 
+                               name="curricular_units_1st_sem_grade" min="0" max="20" step="0.1" required>
+                        <span class="field-help">Escala de 0 a 20</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2nd Semester Performance -->
+            <div class="card">
+                <h2>📊 Desempenho 2º Semestre</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="curricular_units_2nd_sem_enrolled">Matérias Matriculadas</label>
+                        <input type="number" id="curricular_units_2nd_sem_enrolled" 
+                               name="curricular_units_2nd_sem_enrolled" min="0" max="15" required>
+                        <span class="field-help">Número total de matérias</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="curricular_units_2nd_sem_approved">Matérias Aprovadas</label>
+                        <input type="number" id="curricular_units_2nd_sem_approved" 
+                               name="curricular_units_2nd_sem_approved" min="0" max="15" required>
+                        <span class="field-help">Quantas foram aprovadas</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="curricular_units_2nd_sem_grade">Nota Média</label>
+                        <input type="number" id="curricular_units_2nd_sem_grade" 
+                               name="curricular_units_2nd_sem_grade" min="0" max="20" step="0.1" required>
+                        <span class="field-help">Escala de 0 a 20</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Economic Context -->
+            <div class="card">
+                <h2>📈 Contexto Econômico</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="unemployment_rate">Taxa de Desemprego (%)</label>
+                        <input type="number" id="unemployment_rate" name="unemployment_rate" 
+                               min="0" max="30" step="0.1" required>
+                        <span class="field-help">Taxa de desemprego atual no país</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="form-actions">
+                <button type="button" id="fillExampleBtn" class="btn btn-secondary">
+                    📝 Preencher Exemplo
+                </button>
+                <button type="submit" class="btn btn-primary" id="submitBtn">
+                    <span class="btn-text">🎯 Fazer Predição</span>
+                    <span class="btn-loader hidden">⏳ Analisando...</span>
+                </button>
+            </div>
+        </form>
+
+        <!-- Results -->
+        <div id="results" class="results hidden">
+            <div class="card">
+                <h2>🎯 Resultado da Predição</h2>
+                <div id="prediction-content"></div>
+            </div>
+        </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 
