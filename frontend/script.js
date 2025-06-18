@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = 'http://localhost:8000';  // Different port for simplified API
+const API_BASE_URL = 'http://localhost:5000';
 
 // DOM Elements
 const form = document.getElementById('predictionForm');
@@ -246,7 +246,7 @@ async function makePrediction(data) {
         
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+            throw new Error(errorData.error || errorData.message || `HTTP error! status: ${response.status}`);
         }
         
         const result = await response.json();

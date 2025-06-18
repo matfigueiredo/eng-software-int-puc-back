@@ -1,39 +1,87 @@
-from fastapi import APIRouter, HTTPException
+from flask import Blueprint, jsonify, make_response, request
 
-from models.schemas import PredictionResponse, SimpleStudentData
+from logger import log_error
+from models.schemas import SimpleStudentData
 from services.prediction_service import prediction_service
+from utils.validation import (
+    ValidationError,
+    create_error_response,
+    validate_dataclass_data,
+)
 
-router = APIRouter(prefix="/api", tags=["prediction"])
+prediction_bp = Blueprint('prediction', __name__, url_prefix='/api')
 
-@router.get("/")
-async def root():
-    return {
+def add_cors_headers(response):
+    """Add CORS headers to response"""
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Accept'
+    return response
+
+@prediction_bp.route('/', methods=['GET'])
+def root():
+    """Root endpoint"""
+    response = make_response(jsonify({
         "message": "Student Dropout Prediction API",
         "status": "running",
         "model_loaded": prediction_service.is_model_loaded(),
-        "features": prediction_service.model_info['feature_count'] if prediction_service.model_info else 0,
-        "version": "1.0.0"
-    }
+        "features": len(prediction_service.model_info.get('feature_names', [])) if prediction_service.model_info else 0,
+        "version": "2.0.0"
+    }))
+    return add_cors_headers(response)
 
-@router.get("/model-info")
-async def get_model_info():
+@prediction_bp.route('/model-info', methods=['GET'])
+def get_model_info():
+    """Get model information"""
     model_info = prediction_service.get_model_info()
     if model_info is None:
-        raise HTTPException(status_code=503, detail="Model not loaded")
-    return model_info
+        response = make_response(jsonify({"error": "Model not loaded"}), 503)
+    else:
+        response = make_response(jsonify(model_info))
+    return add_cors_headers(response)
 
-@router.post("/predict", response_model=PredictionResponse)
-async def predict_student_status(student_data: SimpleStudentData):
+@prediction_bp.route('/predict', methods=['POST', 'OPTIONS'])
+def predict_student_status():
+    """Predict student dropout status"""
+    # Handle preflight request
+    if request.method == 'OPTIONS':
+        response = make_response()
+        return add_cors_headers(response)
+    
     if not prediction_service.is_model_loaded():
-        raise HTTPException(status_code=503, detail="Model not loaded")
+        response = make_response(jsonify({"error": "Model not loaded"}), 503)
+        return add_cors_headers(response)
     
     try:
-        return prediction_service.predict(student_data)
+        # Get JSON data from request
+        data = request.get_json()
+        if not data:
+            response = make_response(jsonify({"error": "No JSON data provided"}), 400)
+            return add_cors_headers(response)
+        
+        # Validate data against dataclass schema
+        validated_data = validate_dataclass_data(SimpleStudentData, data)
+        
+        # Create student data object
+        student_data = SimpleStudentData.from_dict(validated_data)
+        
+        # Make prediction
+        result = prediction_service.predict(student_data)
+        
+        response = make_response(jsonify(result.to_dict()))
+        return add_cors_headers(response)
+        
+    except ValidationError as e:
+        log_error(f"Validation error: {e.message}")
+        response = make_response(jsonify(create_error_response(e)), 400)
+        return add_cors_headers(response)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Prediction error: {str(e)}")
+        log_error(f"Prediction error: {str(e)}")
+        response = make_response(jsonify({"error": f"Prediction error: {str(e)}"}), 400)
+        return add_cors_headers(response)
 
-@router.post("/predict-example")
-async def predict_example():
+@prediction_bp.route('/predict-example', methods=['POST'])
+def predict_example():
     """Endpoint with simplified example data for testing"""
     example_data = SimpleStudentData(
         # Personal Information
@@ -63,16 +111,31 @@ async def predict_example():
         unemployment_rate=10.8
     )
     
-    return await predict_student_status(example_data)
+    try:
+        result = prediction_service.predict(example_data)
+        response = make_response(jsonify(result.to_dict()))
+        return add_cors_headers(response)
+    except Exception as e:
+        log_error(f"Example prediction error: {str(e)}")
+        response = make_response(jsonify({"error": f"Prediction error: {str(e)}"}), 400)
+        return add_cors_headers(response)
 
-@router.get("/features")
-async def get_features():
+@prediction_bp.route('/features', methods=['GET'])
+def get_features():
     """Get list of features with descriptions"""
     if not prediction_service.is_model_loaded():
-        raise HTTPException(status_code=503, detail="Model not loaded")
+        response = make_response(jsonify({"error": "Model not loaded"}), 503)
+        return add_cors_headers(response)
     
-    features_info = prediction_service.get_features_info()
-    if features_info is None:
-        raise HTTPException(status_code=503, detail="Model not loaded")
-    
-    return features_info 
+    try:
+        features_info = prediction_service.get_features_info()
+        if features_info is None:
+            response = make_response(jsonify({"error": "Model not loaded"}), 503)
+            return add_cors_headers(response)
+        
+        response = make_response(jsonify(features_info))
+        return add_cors_headers(response)
+    except Exception as e:
+        log_error(f"Features error: {str(e)}")
+        response = make_response(jsonify({"error": f"Error getting features: {str(e)}"}), 500)
+        return add_cors_headers(response) 
