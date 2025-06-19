@@ -1,80 +1,418 @@
-// API Configuration
-const API_BASE_URL = 'http://localhost:5000';
+// Configuration
+const API_BASE_URL = 'http://localhost:5000/api';
 
-// DOM Elements
-const form = document.getElementById('predictionForm');
-const submitBtn = document.getElementById('submitBtn');
-const fillExampleBtn = document.getElementById('fillExampleBtn');
-const resultsDiv = document.getElementById('results');
-const btnText = document.querySelector('.btn-text');
-const btnLoader = document.querySelector('.btn-loader');
+// State management
+let currentStep = 1;
+const totalSteps = 5;
 
-// Simplified example data
-const exampleData = {
-    age_at_enrollment: 18,
-    gender: 0,  // Female
-    marital_status: 1,  // Single
-    admission_grade: 140.0,
-    daytime_evening_attendance: 1,  // Daytime
-    scholarship_holder: 1,  // Yes
-    tuition_fees_up_to_date: 1,  // Yes
-    curricular_units_1st_sem_enrolled: 8,
-    curricular_units_1st_sem_approved: 8,
-    curricular_units_1st_sem_grade: 14.0,
-    curricular_units_2nd_sem_enrolled: 8,
-    curricular_units_2nd_sem_approved: 8,
-    curricular_units_2nd_sem_grade: 14.5,
-    unemployment_rate: 10.8
-};
+// DOM elements - will be initialized after DOM loads
+let form, resultsDiv, prevBtn, nextBtn, submitBtn, fillExampleBtn, progressFill, currentStepSpan;
 
-// Fill example data
-function fillExampleData() {
-    Object.keys(exampleData).forEach(key => {
-        const input = document.getElementById(key);
-        if (input) {
-            input.value = exampleData[key];
-            // Trigger input event for validation
-            input.dispatchEvent(new Event('input'));
+function initializeElements() {
+    form = document.getElementById('predictionForm');
+    resultsDiv = document.getElementById('results');
+    prevBtn = document.getElementById('prevBtn');
+    nextBtn = document.getElementById('nextBtn');
+    submitBtn = document.getElementById('submitBtn');
+    fillExampleBtn = document.getElementById('fillExampleBtn');
+    progressFill = document.getElementById('progressFill');
+    currentStepSpan = document.getElementById('currentStep');
+    
+    console.log('Elements initialized:', {
+        form: !!form,
+        resultsDiv: !!resultsDiv,
+        prevBtn: !!prevBtn,
+        nextBtn: !!nextBtn,
+        submitBtn: !!submitBtn,
+        fillExampleBtn: !!fillExampleBtn,
+        progressFill: !!progressFill,
+        currentStepSpan: !!currentStepSpan
+    });
+}
+
+// Initialize the form
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing...');
+    
+    // Wait a bit for all elements to be ready
+    setTimeout(() => {
+        initializeElements(); // Initialize DOM elements first
+        initializeForm();
+        updateStepDisplay(); // Make sure first step is properly displayed
+        updateProgress();
+        testApiConnection();
+        
+        // Show welcome message
+        setTimeout(() => {
+            showNotification('Bem-vindo! Use o botão "Exemplo" para testar', 'info');
+        }, 1000);
+    }, 100);
+});
+
+// Initialize form and event listeners
+function initializeForm() {
+    console.log('Initializing form...');
+    
+    // Check if elements exist
+    if (!prevBtn || !nextBtn || !submitBtn || !fillExampleBtn) {
+        console.error('Navigation buttons not found!');
+        return;
+    }
+    
+    // Navigation buttons
+    prevBtn.addEventListener('click', previousStep);
+    nextBtn.addEventListener('click', nextStep);
+    submitBtn.addEventListener('click', handleSubmit);
+    fillExampleBtn.addEventListener('click', fillExampleData);
+    
+    // Form validation on input change
+    const inputs = form.querySelectorAll('input, select');
+    inputs.forEach(input => {
+        input.addEventListener('change', () => {
+            // Clear error styling when user starts typing
+            if (input.value && input.value.trim() !== '') {
+                input.style.borderColor = '';
+            }
+        });
+        input.addEventListener('input', () => {
+            // Clear error styling when user starts typing
+            if (input.value && input.value.trim() !== '') {
+                input.style.borderColor = '';
+            }
+        });
+    });
+    
+    console.log('Form initialized successfully');
+}
+
+// Navigation functions
+function nextStep() {
+    console.log('Next step clicked, current step:', currentStep);
+    
+    if (validateCurrentStep()) {
+        if (currentStep < totalSteps) {
+            currentStep++;
+            console.log('Moving to step:', currentStep);
+            updateStepDisplay();
+            updateProgress();
+        } else {
+            console.log('Already at last step');
+        }
+    } else {
+        console.log('Validation failed, staying at step:', currentStep);
+    }
+}
+
+function previousStep() {
+    console.log('Previous step clicked, current step:', currentStep);
+    
+    if (currentStep > 1) {
+        currentStep--;
+        console.log('Moving to step:', currentStep);
+        updateStepDisplay();
+        updateProgress();
+    } else {
+        console.log('Already at first step');
+    }
+}
+
+// Update step display
+function updateStepDisplay() {
+    console.log('Updating step display to step:', currentStep);
+    
+    // Hide all step contents
+    const stepContents = document.querySelectorAll('.step-content');
+    stepContents.forEach(content => {
+        content.classList.remove('active');
+    });
+    
+    // Show current step content
+    const currentContent = document.querySelector(`.step-content[data-step="${currentStep}"]`);
+    if (currentContent) {
+        currentContent.classList.add('active');
+        console.log('Activated step content:', currentStep);
+    } else {
+        console.error('Could not find step content for step:', currentStep);
+    }
+    
+    // Update stepper
+    const steps = document.querySelectorAll('.stepper .step');
+    steps.forEach((step, index) => {
+        const stepNumber = index + 1;
+        step.classList.remove('active', 'completed');
+        
+        if (stepNumber < currentStep) {
+            step.classList.add('completed');
+        } else if (stepNumber === currentStep) {
+            step.classList.add('active');
         }
     });
     
-    // Show success message
-    showNotification('✅ Dados de exemplo preenchidos!', 'success');
+    // Update navigation buttons
+    if (prevBtn) prevBtn.classList.toggle('hidden', currentStep === 1);
+    if (nextBtn) nextBtn.classList.toggle('hidden', currentStep === totalSteps);
+    if (submitBtn) submitBtn.classList.toggle('hidden', currentStep !== totalSteps);
+    
+    // Hide results when navigating
+    if (resultsDiv) resultsDiv.classList.add('hidden');
+}
+
+// Update progress bar
+function updateProgress() {
+    const progress = (currentStep / totalSteps) * 100;
+    if (progressFill) {
+        progressFill.style.width = `${progress}%`;
+    }
+    if (currentStepSpan) {
+        currentStepSpan.textContent = currentStep;
+    }
+    console.log('Progress updated:', progress + '%', 'Step:', currentStep);
+}
+
+// Validate current step
+function validateCurrentStep() {
+    const currentContent = document.querySelector(`.step-content[data-step="${currentStep}"]`);
+    if (!currentContent) {
+        console.error('Could not find current step content for validation:', currentStep);
+        return false;
+    }
+    
+    const inputs = currentContent.querySelectorAll('input[required], select[required]');
+    let isValid = true;
+    let emptyFields = [];
+    
+    inputs.forEach(input => {
+        if (!input.value || input.value.trim() === '') {
+            isValid = false;
+            input.style.borderColor = 'hsl(var(--destructive))';
+            emptyFields.push(input.previousElementSibling?.textContent || input.name);
+        } else {
+            input.style.borderColor = '';
+        }
+    });
+    
+    if (!isValid) {
+        console.log('Validation failed for fields:', emptyFields);
+        showNotification('Por favor, preencha todos os campos obrigatórios', 'error');
+    }
+    
+    return isValid;
+}
+
+// Handle form submission
+async function handleSubmit(e) {
+    e.preventDefault();
+    
+    if (!validateAllSteps()) {
+        showNotification('Por favor, verifique todos os campos', 'error');
+        return;
+    }
+    
+    setLoading(true);
+    
+    try {
+        const formData = collectFormData();
+        const response = await fetch(`${API_BASE_URL}/predict`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        displayPrediction(data);
+        
+    } catch (error) {
+        console.error('Prediction error:', error);
+        displayError('Erro ao fazer predição. Verifique se a API está funcionando.');
+    } finally {
+        setLoading(false);
+    }
+}
+
+// Validate all steps
+function validateAllSteps() {
+    const allInputs = form.querySelectorAll('input[required], select[required]');
+    let isValid = true;
+    
+    allInputs.forEach(input => {
+        if (!input.value.trim()) {
+            isValid = false;
+        }
+    });
+    
+    return isValid;
 }
 
 // Collect form data
-function getFormData() {
+function collectFormData() {
     const formData = new FormData(form);
     const data = {};
     
     for (let [key, value] of formData.entries()) {
-        // Convert numeric fields
-        if (key.includes('grade') || key.includes('rate') || key === 'admission_grade') {
+        // Convert numeric values
+        if (value && !isNaN(value)) {
             data[key] = parseFloat(value);
         } else {
-            data[key] = parseInt(value);
+            data[key] = value;
         }
     }
     
     return data;
 }
 
-// Show loading state
-function showLoading() {
-    submitBtn.disabled = true;
-    btnText.classList.add('hidden');
-    btnLoader.classList.remove('hidden');
-    btnLoader.classList.add('visible');
-    form.classList.add('loading');
+// Display prediction results
+function displayPrediction(data) {
+    console.log('Received prediction data:', data);
+    
+    // Handle both string and number predictions
+    const predictionLabels = {
+        // Number format
+        0: { text: 'O aluno abandona o curso', class: 'dropout', emoji: '⚠️' },
+        1: { text: 'O aluno continua matriculado no curso', class: 'enrolled', emoji: '📚' },
+        2: { text: 'O aluno se gradua no curso', class: 'graduate', emoji: '🎓' },
+        // String format
+        'Dropout': { text: 'O aluno abandona o curso', class: 'dropout', emoji: '⚠️' },
+        'Enrolled': { text: 'O aluno continua matriculado no curso', class: 'enrolled', emoji: '📚' },
+        'Graduate': { text: 'O aluno se gradua no curso', class: 'graduate', emoji: '🎓' }
+    };
+    
+    const prediction = predictionLabels[data.prediction];
+    const predictionText = prediction ? prediction.text : 'Desconhecido';
+    const predictionClass = prediction ? prediction.class : 'unknown';
+    const predictionEmoji = prediction ? prediction.emoji : '❓';
+    
+    const confidenceData = data.confidence || {};
+    
+    // Convert confidence percentages (they come as decimals)
+    const dropoutPercent = ((confidenceData.Dropout || confidenceData.dropout || 0) * 100).toFixed(1);
+    const enrolledPercent = ((confidenceData.Enrolled || confidenceData.enrolled || 0) * 100).toFixed(1);
+    const graduatePercent = ((confidenceData.Graduate || confidenceData.graduate || 0) * 100).toFixed(1);
+    
+    // Get model info
+    const modelInfo = data.model_info || {};
+    const modelName = modelInfo.model_name || 'SVM';
+    
+    const resultHTML = `    
+        <div class="prediction-result">
+            <div class="prediction-badge prediction-${predictionClass}">
+                ${predictionEmoji} ${predictionText}
+            </div>
+            <p>Modelo escolhido: <strong>${modelName}</strong></p>
+
+            <br>
+
+            <p>Veja as probabilidades de cada resultado:</p>
+            
+            <div class="confidence-grid">
+                <div class="confidence-item">
+                    <div class="confidence-label">⚠️ Abandono</div>
+                    <div class="confidence-value">${dropoutPercent}%</div>
+                </div>
+                <div class="confidence-item">
+                    <div class="confidence-label">📚 Matriculado</div>
+                    <div class="confidence-value">${enrolledPercent}%</div>
+                </div>
+                <div class="confidence-item">
+                    <div class="confidence-label">🎓 Graduado</div>
+                    <div class="confidence-value">${graduatePercent}%</div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('prediction-content').innerHTML = resultHTML;
+    resultsDiv.classList.remove('hidden');
+    resultsDiv.scrollIntoView({ behavior: 'smooth' });
+    
+    // Show success notification
+    showNotification(`Predição: ${predictionText}`, 'success');
 }
 
-// Hide loading state
-function hideLoading() {
-    submitBtn.disabled = false;
-    btnText.classList.remove('hidden');
-    btnLoader.classList.add('hidden');
-    btnLoader.classList.remove('visible');
-    form.classList.remove('loading');
+// Display error message
+function displayError(message) {
+    const errorHTML = `
+        <div class="error-message">
+            <strong>Erro:</strong> ${message}
+        </div>
+    `;
+    
+    document.getElementById('prediction-content').innerHTML = errorHTML;
+    resultsDiv.classList.remove('hidden');
+    resultsDiv.scrollIntoView({ behavior: 'smooth' });
+    
+    showNotification(`Erro: ${message}`, 'error');
+}
+
+// Set loading state
+function setLoading(isLoading) {
+    const btnText = submitBtn.querySelector('.btn-text');
+    const btnLoader = submitBtn.querySelector('.btn-loader');
+    
+    if (isLoading) {
+        btnText.classList.add('hidden');
+        btnLoader.classList.add('visible');
+        submitBtn.disabled = true;
+        form.classList.add('loading');
+    } else {
+        btnText.classList.remove('hidden');
+        btnLoader.classList.remove('visible');
+        submitBtn.disabled = false;
+        form.classList.remove('loading');
+    }
+}
+
+// Fill example data
+function fillExampleData() {
+    const exampleData = {
+        age_at_enrollment: 18,
+        gender: '0',
+        marital_status: '1',
+        admission_grade: 142.5,
+        daytime_evening_attendance: '1',
+        scholarship_holder: '0',
+        tuition_fees_up_to_date: '1',
+        curricular_units_1st_sem_enrolled: 6,
+        curricular_units_1st_sem_approved: 6,
+        curricular_units_1st_sem_grade: 13.4,
+        curricular_units_2nd_sem_enrolled: 6,
+        curricular_units_2nd_sem_approved: 6,
+        curricular_units_2nd_sem_grade: 13.4,
+        unemployment_rate: 10.8
+    };
+    
+    // Fill form fields
+    Object.entries(exampleData).forEach(([key, value]) => {
+        const field = document.getElementById(key);
+        if (field) {
+            field.value = value;
+        }
+    });
+    
+    // Show success message
+    showNotification('Dados de exemplo preenchidos!', 'success');
+    
+    // Go to first step to review data
+    currentStep = 1;
+    updateStepDisplay();
+    updateProgress();
+}
+
+// Test API connection
+async function testApiConnection() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/`);
+        if (response.ok) {
+            const data = await response.json();
+        }
+    } catch (error) {
+        showNotification('API não disponível. Verifique se o servidor está rodando', 'error');
+    }
 }
 
 // Show notification
@@ -86,25 +424,9 @@ function showNotification(message, type = 'info') {
     
     // Style notification
     Object.assign(notification.style, {
-        position: 'fixed',
-        top: '20px',
-        right: '20px',
-        padding: '1rem 1.5rem',
-        borderRadius: '8px',
-        color: 'white',
-        fontWeight: '500',
-        zIndex: '1000',
         transform: 'translateX(100%)',
         transition: 'transform 0.3s ease'
     });
-    
-    // Set background color based on type
-    const colors = {
-        success: '#48bb78',
-        error: '#f56565',
-        info: '#4299e1'
-    };
-    notification.style.background = colors[type] || colors.info;
     
     // Add to page
     document.body.appendChild(notification);
@@ -114,7 +436,7 @@ function showNotification(message, type = 'info') {
         notification.style.transform = 'translateX(0)';
     }, 100);
     
-    // Remove after 3 seconds
+    // Remove after delay
     setTimeout(() => {
         notification.style.transform = 'translateX(100%)';
         setTimeout(() => {
@@ -123,273 +445,4 @@ function showNotification(message, type = 'info') {
             }
         }, 300);
     }, 3000);
-}
-
-// Display prediction results
-function displayResults(data) {
-    const prediction = data.prediction;
-    const confidence = data.confidence;
-    
-    // Determine prediction class for styling
-    let predictionClass = '';
-    let predictionText = '';
-    let predictionEmoji = '';
-    
-    switch(prediction.toLowerCase()) {
-        case 'dropout':
-            predictionClass = 'prediction-dropout';
-            predictionText = 'Risco de Abandono';
-            predictionEmoji = '⚠️';
-            break;
-        case 'enrolled':
-            predictionClass = 'prediction-enrolled';
-            predictionText = 'Continua Matriculado';
-            predictionEmoji = '📚';
-            break;
-        case 'graduate':
-            predictionClass = 'prediction-graduate';
-            predictionText = 'Irá se Formar';
-            predictionEmoji = '🎓';
-            break;
-        default:
-            predictionClass = 'prediction-enrolled';
-            predictionText = prediction;
-            predictionEmoji = '📊';
-    }
-    
-    // Build confidence grid
-    let confidenceHTML = '';
-    if (confidence && Object.keys(confidence).length > 1) {
-        confidenceHTML = `
-            <h4 style="margin: 1rem 0 0.5rem 0; color: #4a5568;">Confiança do Modelo:</h4>
-            <div class="confidence-grid">
-                ${Object.entries(confidence).map(([key, value]) => {
-                    const percentage = (value * 100).toFixed(1);
-                    let label = key;
-                    let emoji = '';
-                    
-                    // Translate labels
-                    switch(key.toLowerCase()) {
-                        case 'dropout':
-                            label = 'Dropout';
-                            emoji = '⚠️';
-                            break;
-                        case 'enrolled':
-                            label = 'Enrolled';
-                            emoji = '📚';
-                            break;
-                        case 'graduate':
-                            label = 'Graduate';
-                            emoji = '🎓';
-                            break;
-                    }
-                    
-                    return `
-                        <div class="confidence-item">
-                            <div class="confidence-label">${emoji} ${label}</div>
-                            <div class="confidence-value">${percentage}%</div>
-                        </div>
-                    `;
-                }).join('')}
-            </div>
-        `;
-    }
-    
-    const resultHTML = `
-        <div class="prediction-result">
-            <div class="prediction-badge ${predictionClass}">
-                ${predictionEmoji} ${predictionText}
-            </div>
-            <p style="color: #718096; margin-bottom: 0.5rem;">
-                Modelo: <strong>${data.model_info.model_name}</strong> 
-                (${data.model_info.features_used} campos)
-            </p>
-            ${confidenceHTML}
-        </div>
-    `;
-    
-    document.getElementById('prediction-content').innerHTML = resultHTML;
-    resultsDiv.classList.remove('hidden');
-    
-    // Scroll to results
-    resultsDiv.scrollIntoView({ behavior: 'smooth' });
-    
-    // Show success notification
-    showNotification(`✅ Predição: ${predictionText}`, 'success');
-}
-
-// Display error message
-function displayError(message) {
-    const errorHTML = `
-        <div class="error-message">
-            <strong>❌ Erro:</strong> ${message}
-        </div>
-    `;
-    
-    document.getElementById('prediction-content').innerHTML = errorHTML;
-    resultsDiv.classList.remove('hidden');
-    resultsDiv.scrollIntoView({ behavior: 'smooth' });
-    
-    showNotification(`❌ Erro: ${message}`, 'error');
-}
-
-// Make prediction
-async function makePrediction(data) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/predict`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data)
-        });
-        
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || errorData.message || `HTTP error! status: ${response.status}`);
-        }
-        
-        const result = await response.json();
-        displayResults(result);
-        
-    } catch (error) {
-        console.error('Prediction error:', error);
-        
-        if (error.name === 'TypeError' && error.message.includes('fetch')) {
-            displayError('Não foi possível conectar com a API. Verifique se o servidor está rodando em ' + API_BASE_URL);
-        } else {
-            displayError(error.message);
-        }
-    }
-}
-
-// Validate form
-function validateForm() {
-    const requiredFields = form.querySelectorAll('[required]');
-    let isValid = true;
-    let firstInvalidField = null;
-    
-    requiredFields.forEach(field => {
-        if (!field.value.trim()) {
-            field.style.borderColor = '#f56565';
-            isValid = false;
-            if (!firstInvalidField) {
-                firstInvalidField = field;
-            }
-        } else {
-            field.style.borderColor = '#e2e8f0';
-        }
-    });
-    
-    // Focus on first invalid field
-    if (firstInvalidField) {
-        firstInvalidField.focus();
-        firstInvalidField.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-    
-    return isValid;
-}
-
-// Validate numeric ranges
-function validateRanges() {
-    const validations = [
-        { id: 'age_at_enrollment', min: 16, max: 80, name: 'Idade' },
-        { id: 'admission_grade', min: 0, max: 200, name: 'Nota de Admissão' },
-        { id: 'curricular_units_1st_sem_grade', min: 0, max: 20, name: 'Nota 1º Semestre' },
-        { id: 'curricular_units_2nd_sem_grade', min: 0, max: 20, name: 'Nota 2º Semestre' },
-        { id: 'unemployment_rate', min: 0, max: 30, name: 'Taxa de Desemprego' }
-    ];
-    
-    let isValid = true;
-    
-    validations.forEach(({ id, min, max, name }) => {
-        const field = document.getElementById(id);
-        if (field && field.value) {
-            const value = parseFloat(field.value);
-            if (value < min || value > max) {
-                field.style.borderColor = '#f56565';
-                showNotification(`${name} deve estar entre ${min} e ${max}`, 'error');
-                isValid = false;
-            }
-        }
-    });
-    
-    return isValid;
-}
-
-// Event Listeners
-fillExampleBtn.addEventListener('click', fillExampleData);
-
-form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-        displayError('Por favor, preencha todos os campos obrigatórios.');
-        return;
-    }
-    
-    if (!validateRanges()) {
-        displayError('Por favor, verifique os valores inseridos.');
-        return;
-    }
-    
-    showLoading();
-    
-    try {
-        const formData = getFormData();
-        await makePrediction(formData);
-    } catch (error) {
-        displayError('Erro ao processar os dados do formulário.');
-    } finally {
-        hideLoading();
-    }
-});
-
-// Test API connection on page load
-async function testAPIConnection() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/api`);
-        if (response.ok) {
-            const data = await response.json();
-            console.log('✅ API connection successful');
-            console.log('📊 Model features:', data.features);
-            showNotification('🟢 Conectado à API simplificada', 'success');
-        }
-    } catch (error) {
-        console.warn('⚠️ API connection failed:', error.message);
-        console.warn('Make sure the simplified API server is running on', API_BASE_URL);
-        showNotification('🔴 API não disponível. Execute: python main_simple.py', 'error');
-    }
-}
-
-// Add input event listeners for real-time validation
-function setupRealTimeValidation() {
-    const inputs = form.querySelectorAll('input, select');
-    inputs.forEach(input => {
-        input.addEventListener('input', () => {
-            if (input.value.trim()) {
-                input.style.borderColor = '#e2e8f0';
-            }
-        });
-        
-        // Add focus effects
-        input.addEventListener('focus', () => {
-            input.parentElement.style.transform = 'scale(1.02)';
-        });
-        
-        input.addEventListener('blur', () => {
-            input.parentElement.style.transform = 'scale(1)';
-        });
-    });
-}
-
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    testAPIConnection();
-    setupRealTimeValidation();
-    
-    // Show welcome message
-    setTimeout(() => {
-        showNotification('👋 Bem-vindo! Use o botão "Preencher Exemplo" para testar', 'info');
-    }, 1000);
-}); 
+} 
