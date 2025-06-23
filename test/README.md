@@ -54,6 +54,28 @@ Testes para os dataclasses em `models/schemas.py`.
 - Criação de instâncias
 - Integridade dos dados
 
+### test_model_performance.py
+Testes de performance e qualidade do modelo de machine learning.
+
+**Métricas testadas:**
+- Accuracy mínima: 60%
+- Precision mínima: 50%
+- Recall mínimo: 55%
+- F1-Score mínimo: 55%
+
+**Testes implementados:**
+- `test_model_accuracy_threshold()` - Verifica accuracy mínima
+- `test_model_precision_threshold()` - Verifica precision mínima
+- `test_model_recall_threshold()` - Verifica recall mínimo
+- `test_model_f1_score_threshold()` - Verifica F1-Score mínimo
+- `test_model_confidence_consistency()` - Consistência das probabilidades
+- `test_model_prediction_time()` - Performance de tempo (máx 1s por predição)
+- `test_model_handles_edge_cases()` - Robustez com casos extremos
+- `test_model_performance_regression()` - Prevenção de degradação
+
+**Objetivo:**
+Garantir que substituições de modelo atendam aos requisitos de performance estabelecidos, evitando deploy de modelos inadequados.
+
 ## Configuração
 
 ### conftest.py
@@ -77,4 +99,11 @@ pytest test/ -v
 pytest test/test_prediction_service.py
 pytest test/test_prediction_router.py
 pytest test/test_schemas.py
+pytest test/test_model_performance.py
+
+# Executar apenas testes de performance
+pytest test/test_model_performance.py -v
+
+# Executar testes marcados como integração
+pytest -m integration
 ```
