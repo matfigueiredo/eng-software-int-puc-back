@@ -43,7 +43,6 @@ def get_model_info():
 @prediction_bp.route('/predict', methods=['POST', 'OPTIONS'])
 def predict_student_status():
     """Predict student dropout status"""
-    # Handle preflight request
     if request.method == 'OPTIONS':
         response = make_response()
         return add_cors_headers(response)
@@ -53,19 +52,15 @@ def predict_student_status():
         return add_cors_headers(response)
     
     try:
-        # Get JSON data from request
         data = request.get_json()
         if not data:
             response = make_response(jsonify({"error": "No JSON data provided"}), 400)
             return add_cors_headers(response)
         
-        # Validate data against dataclass schema
         validated_data = validate_dataclass_data(SimpleStudentData, data)
         
-        # Create student data object
         student_data = SimpleStudentData.from_dict(validated_data)
         
-        # Make prediction
         result = prediction_service.predict(student_data)
         
         response = make_response(jsonify(result.to_dict()))
@@ -84,30 +79,24 @@ def predict_student_status():
 def predict_example():
     """Endpoint with simplified example data for testing"""
     example_data = SimpleStudentData(
-        # Personal Information
         age_at_enrollment=18,
         gender=0,  # Female
         marital_status=1,  # Single
         
-        # Academic Information
         admission_grade=140.0,
         daytime_evening_attendance=1,  # Daytime
         
-        # Financial Status
         scholarship_holder=1,  # Yes
         tuition_fees_up_to_date=1,  # Yes
         
-        # 1st Semester Performance
         curricular_units_1st_sem_enrolled=8,
         curricular_units_1st_sem_approved=8,
         curricular_units_1st_sem_grade=14.0,
         
-        # 2nd Semester Performance
         curricular_units_2nd_sem_enrolled=8,
         curricular_units_2nd_sem_approved=8,
         curricular_units_2nd_sem_grade=14.5,
         
-        # Economic Context
         unemployment_rate=10.8
     )
     
